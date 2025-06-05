@@ -55,8 +55,9 @@ class Gpio:
             time.sleep(self.value[1])
 
     def __init__(self, period_s):
-        self.line = gpiod.Chip(os.environ['FAN_CHIP']).get_line(int(os.environ['FAN_LINE']))
-        self.line.request(consumer='fan', type=gpiod.LINE_REQ_DIR_OUT)
+
+        self.line = gpiod.Chip(f"/dev/gpiodchip{os.environ['FAN_CHIP'].strip()}").get_line(int(os.environ['FAN_LINE']))
+        self.line.request(consumer='penta-fan', type=gpiod.LINE_REQ_DIR_OUT)
         self.value = [period_s / 2, period_s / 2]
         self.period_s = period_s
         self.thread = threading.Thread(target=self.tr, daemon=True)
