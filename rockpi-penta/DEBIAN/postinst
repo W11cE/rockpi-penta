@@ -44,6 +44,16 @@ systemctl enable rockpi-penta.service
 model=$(tr -d '\0' </proc/device-tree/model)
 
 case "$model" in
+*"Raspberry Pi Compute Module 5"*)
+  raspi-config nonint do_i2c 0 >/dev/null || true
+  # see https://github.com/raspberrypi/linux/pull/6144
+  if dpkg --compare-versions "$(uname -r)" gt 6.6.45; then
+    cp /usr/bin/rockpi-penta/env/rpi5gt6.6.45.env /etc/rockpi-penta.env
+  else
+    cp /usr/bin/rockpi-penta/env/rpi5.env /etc/rockpi-penta.env
+  fi
+  systemctl start rockpi-penta.service
+  ;;
 *"Raspberry Pi 5"*)
   raspi-config nonint do_i2c 0 >/dev/null || true
   # see https://github.com/raspberrypi/linux/pull/6144
