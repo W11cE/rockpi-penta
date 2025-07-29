@@ -5,6 +5,8 @@ import time
 import subprocess
 import multiprocessing as mp
 import traceback
+import logging
+import sys
 
 import gpiod
 from configparser import ConfigParser
@@ -20,7 +22,16 @@ cmds = {
     'disk': "df -h | awk '$NF==\"/\"{printf \"Disk: %d/%dGB %s\", $3,$2,$5}'"
 }
 
-lv2dc = OrderedDict({'lv3': 0, 'lv2': 0.25, 'lv1': 0.5, 'lv0': 0.75})
+# Global variables
+temperature_history = []
+last_dc = None
+
+# Configure logging
+logging.basicConfig(
+    level=logging.DEBUG,  # Set to DEBUG to see all messages
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    stream=sys.stdout  # Output to stdout
+)
 
 
 def check_output(cmd):
@@ -55,10 +66,13 @@ def read_conf():
         cfg = ConfigParser()
         cfg.read('/etc/rockpi-penta.conf')
         # fan
-        conf['fan']['lv0'] = cfg.getfloat('fan', 'lv0')
-        conf['fan']['lv1'] = cfg.getfloat('fan', 'lv1')
-        conf['fan']['lv2'] = cfg.getfloat('fan', 'lv2')
-        conf['fan']['lv3'] = cfg.getfloat('fan', 'lv3')
+        conf['fan']['lvMin'] = cfg.getfloat('fan', 'lvMin')
+        conf['fan']['lvMax'] = cfg.getfloat('fan', 'lvMax')
+        conf['fan']['hysteresis'] = cfg.getfloat('fan', 'hysteresis', fallback=2)
+        conf['fan']['average_samples'] = cfg.getint('fan', 'average_samples', fallback=5)
+        conf['fan']['dc_min'] = cfg.getfloat('fan', 'dc_min', fallback=0.999)
+        # temperature
+        conf['temperature']['source'] = cfg.get('temperature', 'source', fallback='cpu')
         # key
         conf['key']['click'] = cfg.get('key', 'click')
         conf['key']['twice'] = cfg.get('key', 'twice')
@@ -71,13 +85,17 @@ def read_conf():
         conf['slider']['time'] = cfg.getfloat('slider', 'time')
         conf['oled']['rotate'] = cfg.getboolean('oled', 'rotate')
         conf['oled']['f-temp'] = cfg.getboolean('oled', 'f-temp')
+        
     except Exception:
         traceback.print_exc()
         # fan
-        conf['fan']['lv0'] = 35
-        conf['fan']['lv1'] = 40
-        conf['fan']['lv2'] = 45
-        conf['fan']['lv3'] = 50
+        conf['fan']['lvMin'] = 35
+        conf['fan']['lvMax'] = 50
+        conf['fan']['hysteresis'] = 2
+        conf['fan']['average_samples'] = 5
+        conf['fan']['dc_min'] = 0.999
+        # temperature
+        conf['temperature']['source'] = 'cpu'
         # key
         conf['key']['click'] = 'slider'
         conf['key']['twice'] = 'switch'
@@ -90,6 +108,8 @@ def read_conf():
         conf['slider']['time'] = 10  # second
         conf['oled']['rotate'] = False
         conf['oled']['f-temp'] = False
+
+
 
     return conf
 
@@ -148,11 +168,47 @@ def slider_sleep():
     time.sleep(conf['slider']['time'])
 
 
+
 def fan_temp2dc(t):
-    for lv, dc in lv2dc.items():
-        if t >= conf['fan'][lv]:
-            return dc
-    return 0.999
+    global last_dc
+
+    # Temperature Averaging
+    temperature_history.append(t)
+    N = conf['fan']['average_samples']
+    if len(temperature_history) > N:
+        temperature_history.pop(0)
+    avg_temp = sum(temperature_history) / len(temperature_history)
+    logging.debug("Average temperature over last %d samples: %.1f°C", N, avg_temp)
+
+    # Define temperature and duty cycle ranges
+    t_min = conf['fan']['lvMin']
+    t_max = conf['fan']['lvMax']
+    dc_min = conf['fan'].get('dc_min', 0.999)  # Default to 0.999 if not set
+    dc_max = 0  # Fan at maximum speed
+
+    # Linear interpolation
+    if avg_temp <= t_min:
+        dc = dc_min
+    elif avg_temp >= t_max:
+        dc = dc_max
+    else:
+        dc = dc_min - ((avg_temp - t_min) * (dc_min - dc_max) / (t_max - t_min))
+
+    # Hysteresis
+    hysteresis = conf['fan']['hysteresis']
+    if last_dc is not None:
+        dc_threshold = (hysteresis / (t_max - t_min)) * (dc_min - dc_max)
+        if abs(dc - last_dc) < dc_threshold:
+            dc = last_dc  # Keep previous duty cycle
+            logging.debug("Duty cycle within hysteresis threshold; keeping last duty cycle")
+    last_dc = dc
+
+    # Calculate fan speed percentage
+    fan_speed_percent = (1 - dc) * 100  # Assuming dc ranges from 0 (full speed) to 0.999 (off)
+    logging.info("Calculated duty cycle: %.3f, Fan speed: %.1f%%", dc, fan_speed_percent)
+
+    return dc
+
 
 
 def fan_switch():
