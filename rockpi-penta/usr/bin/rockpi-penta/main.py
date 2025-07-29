@@ -6,51 +6,31 @@ import traceback
 import fan
 import misc
 
-try:
-    import oled
 
-    top_board = True
-except Exception as ex:
-    traceback.print_exc()
-    top_board = False
 
 q = queue.Queue()
 lock = threading.Lock()
 
+# main.py (after removing OLED support)
+q = queue.Queue()
 action = {
-    'none': lambda: 'nothing',
-    'slider': lambda: oled.slider(lock),
+    'none':   lambda: None,
     'switch': lambda: misc.fan_switch(),
     'reboot': lambda: misc.check_call('reboot'),
     'poweroff': lambda: misc.check_call('poweroff'),
+    # 'slider': removed – no OLED, so slider does nothing
 }
 
-
+# Thread to handle button press events
 def receive_key(q):
     while True:
-        func = misc.get_func(q.get())
-        action[func]()
+        func = misc.get_func(q.get())      # e.g. 'switch', 'reboot', etc.
+        action.get(func, lambda: None)()   # ignore any unknown actions
 
+# Start the key scan and fan control threads
+key_thread = threading.Thread(target=misc.watch_key, args=(q,), daemon=True)
+handler_thread = threading.Thread(target=receive_key, args=(q,), daemon=True)
+fan_thread = threading.Thread(target=fan.running, daemon=False)
+key_thread.start(); handler_thread.start(); fan_thread.start()
+fan_thread.join()  # keep main thread alive by joining the fan thread
 
-if __name__ == '__main__':
-
-    if top_board:
-        oled.welcome()
-        p0 = threading.Thread(target=receive_key, args=(q,), daemon=True)
-        p1 = threading.Thread(target=misc.watch_key, args=(q,), daemon=True)
-        p2 = threading.Thread(target=oled.auto_slider, args=(lock,), daemon=True)
-        p3 = threading.Thread(target=fan.running, daemon=True)
-
-        p0.start()
-        p1.start()
-        p2.start()
-        p3.start()
-        try:
-            p3.join()
-        except KeyboardInterrupt:
-            print("GoodBye ~")
-            oled.goodbye()
-
-    else:
-        p3 = threading.Thread(target=fan.running, daemon=False)
-        p3.start()

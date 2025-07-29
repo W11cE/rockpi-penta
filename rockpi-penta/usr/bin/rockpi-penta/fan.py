@@ -25,60 +25,7 @@ logging.basicConfig(
 
 conf = misc.read_conf()
 
-class Pwm:
-    def __init__(self, chip):
-        self.period_value = None
-        try:
-            int(chip)
-            chip = f'pwmchip{chip}'
-        except ValueError:
-            pass
-        self.filepath = f"/sys/class/pwm/{chip}/pwm0/"
-        try:
-            with open(f"/sys/class/pwm/{chip}/export", 'w') as f:
-                f.write('0')
-        except OSError:
-            print("Warning: init pwm error")
-            traceback.print_exc()
 
-    def period(self, ns: int):
-        self.period_value = ns
-        with open(os.path.join(self.filepath, 'period'), 'w') as f:
-            f.write(str(ns))
-
-    def period_us(self, us: int):
-        self.period(us * 1000)
-
-    def enable(self, t: bool):
-        with open(os.path.join(self.filepath, 'enable'), 'w') as f:
-            f.write(f"{int(t)}")
-
-    def write(self, duty: float):
-        assert self.period_value, "The Period is not set."
-        with open(os.path.join(self.filepath, 'duty_cycle'), 'w') as f:
-            f.write(f"{int(self.period_value * duty)}")
-
-
-class Gpio:
-
-    def tr(self):
-        while True:
-            self.line.set_value(1)
-            time.sleep(self.value[0])
-            self.line.set_value(0)
-            time.sleep(self.value[1])
-
-    def __init__(self, period_s):
-        self.line = gpiod.Chip(os.environ['FAN_CHIP']).get_line(int(os.environ['FAN_LINE']))
-        self.line.request(consumer='fan', type=gpiod.LINE_REQ_DIR_OUT)
-        self.value = [period_s / 2, period_s / 2]
-        self.period_s = period_s
-        self.thread = threading.Thread(target=self.tr, daemon=True)
-        self.thread.start()
-
-    def write(self, duty):
-        self.value[1] = duty * self.period_s
-        self.value[0] = self.period_s - self.value[1]
 
 
 def read_cpu_temp():
@@ -88,8 +35,7 @@ def read_cpu_temp():
     return t
 
 def read_temp():
-    #source = 'drives'
-    source = conf['temperature']['source']
+    source = misc.conf['temperature']['source']   # use global config
     cpu_temp = read_cpu_temp()
     drive_temps = read_drive_temps()
     if source == 'cpu':
@@ -98,14 +44,13 @@ def read_temp():
         if drive_temps:
             temp = max(drive_temps)
         else:
-            temp = cpu_temp  # Fallback if no drive temperatures are available
+            temp = cpu_temp
             logging.warning("No drive temperatures available; using CPU temperature")
     elif source == 'both':
         temps = [cpu_temp] + drive_temps if drive_temps else [cpu_temp]
         temp = max(temps)
     else:
-        temp = cpu_temp  # Default to CPU temperature
-
+        temp = cpu_temp
     logging.debug("Temperature used for fan control: %.1f°C", temp)
     return temp
 
@@ -219,45 +164,33 @@ def _find_hwmon_pwm():
     raise FileNotFoundError("kernel pwm-fan hwmon node not found")
 
 class HwmonFan:
-    """
-    Minimal wrapper around the kernel’s pwm-fan driver.
-    write(duty) expects 0.0 … 1.0 (same as before) and maps it to 0…255.
-    If your hardware uses the inverse duty sense, replace     value = …255
-    with                                                     value = …(255 - …)
-    """
     def __init__(self):
-        self.pwm_file = _find_hwmon_pwm()           # e.g. /sys/class/hwmon/hwmon0/pwm1
-        # Ensure automatic mode is off so we can write our own values:
-        auto = self.pwm_file.with_name("pwm1_enable")
-        if auto.exists():
-            auto.write_text("1")                    # 1 = manual
-
+        self.pwm_file = _find_hwmon_pwm()            # find /sys/class/hwmon*/pwm1
+        pwm_enable = self.pwm_file.with_name("pwm1_enable")
+        if pwm_enable.exists():
+            pwm_enable.write_text("1")               # set manual mode
     def write(self, duty: float):
-        # If *duty 0 = full speed* keep the inversion below,
-        # otherwise use  int(duty*255)
         value = max(0, min(255, int((1.0 - duty) * 255)))
-        self.pwm_file.write_text(f"{value}")
+        self.pwm_file.write_text(str(value))
 
 
 def running():
     global pin
-
     try:
-        # If the kernel pwm-fan driver is present we use HwmonFan
         pin = HwmonFan()
-        logging.info("Using kernel pwm-fan driver (hwmon interface)")
+        logging.info("Using kernel hwmon PWM interface for fan control")
+        # Log config thresholds (lvMin, lvMax, etc.) on startup
+        logging.info(
+            "Fan control config: lvMin=%.1f°C, lvMax=%.1f°C, hysteresis=%.1f°C, "
+            "avg_samples=%d, dc_min=%.3f, temp_source=%s",
+            misc.conf['fan']['lvMin'], misc.conf['fan']['lvMax'],
+            misc.conf['fan']['hysteresis'], misc.conf['fan']['average_samples'],
+            misc.conf['fan']['dc_min'], misc.conf['temperature']['source']
+        )
     except FileNotFoundError:
-        # Fallbacks: hardware PWM (own export) → software GPIO PWM
-        if os.getenv("HARDWARE_PWM") == "1":
-            chip = os.getenv("PWMCHIP", "0")
-            pin = Pwm(chip)          #     << your original Pwm class >>
-            pin.period_us(40)
-            pin.enable(True)
-            logging.info("Using raw PWM sysfs on %s", chip)
-        else:
-            pin = Gpio(0.025)
-            logging.info("Using software GPIO PWM")
-
+        logging.error("Hardware PWM fan interface not found. Exiting fan control thread.")
+        return
+    # Fan control loop (1 Hz)
     while True:
         change_dc(get_dc())
         time.sleep(1)
