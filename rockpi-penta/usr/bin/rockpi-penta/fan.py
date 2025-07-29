@@ -12,6 +12,7 @@ import gpiod
 
 import misc
 
+from pathlib import Path
 
 pin = None
 
@@ -37,7 +38,7 @@ class Pwm:
             with open(f"/sys/class/pwm/{chip}/export", 'w') as f:
                 f.write('0')
         except OSError:
-            print("Waring: init pwm error")
+            print("Warning: init pwm error")
             traceback.print_exc()
 
     def period(self, ns: int):
@@ -87,8 +88,8 @@ def read_cpu_temp():
     return t
 
 def read_temp():
-    source = 'drives'
-    #source = conf['temperature']['source']
+    #source = 'drives'
+    source = conf['temperature']['source']
     cpu_temp = read_cpu_temp()
     drive_temps = read_drive_temps()
     if source == 'cpu':
@@ -204,20 +205,64 @@ def change_dc(dc, cache={}):
         # Send status update to systemd if needed
         # daemon.notify("STATUS=Fan speed set to {:.1f}%".format(fan_speed_percent))
 
+def _find_hwmon_pwm():
+    """
+    Return Path to the first writable */pwm1 produced by the pwm-fan driver.
+    Raises FileNotFoundError if none is found.
+    """
+    for pwm_path in Path("/sys/class/hwmon").glob("hwmon*/pwm1"):
+        try:
+            with open(pwm_path, "r+"):
+                return pwm_path
+        except PermissionError:
+            continue           # not writable by this user – keep looking
+    raise FileNotFoundError("kernel pwm-fan hwmon node not found")
+
+class HwmonFan:
+    """
+    Minimal wrapper around the kernel’s pwm-fan driver.
+    write(duty) expects 0.0 … 1.0 (same as before) and maps it to 0…255.
+    If your hardware uses the inverse duty sense, replace     value = …255
+    with                                                     value = …(255 - …)
+    """
+    def __init__(self):
+        self.pwm_file = _find_hwmon_pwm()           # e.g. /sys/class/hwmon/hwmon0/pwm1
+        # Ensure automatic mode is off so we can write our own values:
+        auto = self.pwm_file.with_name("pwm1_enable")
+        if auto.exists():
+            auto.write_text("1")                    # 1 = manual
+
+    def write(self, duty: float):
+        # If *duty 0 = full speed* keep the inversion below,
+        # otherwise use  int(duty*255)
+        value = max(0, min(255, int((1.0 - duty) * 255)))
+        self.pwm_file.write_text(f"{value}")
 
 
 def running():
     global pin
-    if os.environ['HARDWARE_PWM'] == '1':
-        chip = os.environ['PWMCHIP']
-        pin = Pwm(chip)
-        pin.period_us(40)
-        pin.enable(True)
-    else:
-        pin = Gpio(0.025)
+
+    try:
+        # If the kernel pwm-fan driver is present we use HwmonFan
+        pin = HwmonFan()
+        logging.info("Using kernel pwm-fan driver (hwmon interface)")
+    except FileNotFoundError:
+        # Fallbacks: hardware PWM (own export) → software GPIO PWM
+        if os.getenv("HARDWARE_PWM") == "1":
+            chip = os.getenv("PWMCHIP", "0")
+            pin = Pwm(chip)          #     << your original Pwm class >>
+            pin.period_us(40)
+            pin.enable(True)
+            logging.info("Using raw PWM sysfs on %s", chip)
+        else:
+            pin = Gpio(0.025)
+            logging.info("Using software GPIO PWM")
+
     while True:
         change_dc(get_dc())
         time.sleep(1)
+
+
 
 
 if __name__ == '__main__':
