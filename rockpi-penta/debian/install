@@ -1,6 +1,6 @@
-fan.py                              usr/src/rockpi-penta/
-misc.py                             usr/src/rockpi-penta/
-main.py                             usr/src/rockpi-penta/
-install.sh                          usr/src/doc/rockpi-penta/examples/
-systemd/rockpi-penta.service        lib/systemd/system/
+usr/src/rockpi-penta/fan.py                              usr/src/rockpi-penta/
+usr/src/rockpi-penta/misc.py                             usr/src/rockpi-penta/
+usr/src/rockpi-penta/main.py                             usr/src/rockpi-penta/
+install.sh                                                 usr/src/doc/rockpi-penta/examples/
+lib/systemd/system/systemd/rockpi-penta.service        lib/systemd/system/
 etc/rockpi-penta.conf               etc/
