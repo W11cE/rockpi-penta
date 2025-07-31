@@ -2,9 +2,6 @@
 set -e
 case "$1" in
   configure|upgrade)
-    python3 -m venv /opt/rockpi-penta-venv
-    /opt/rockpi-penta-venv/bin/pip install -U pip
-    /opt/rockpi-penta-venv/bin/pip install /usr/src/rockpi-penta
     systemctl daemon-reload
     systemctl enable --now rockpi-penta.service
     ;;
