@@ -1,4 +1,7 @@
-cd ~/rockpi-penta
-dch --create --package rockpi-penta --newversion 1.0.0-1 \
-    --distribution unstable \
-    "Initial release: Rock 5 C hwmon-only fan controller"
+rockpi-penta (1.0.0-1) unstable; urgency=medium
+
+  * Initial release: Rock 5 C hwmon-only fan controller
+    - Removed OLED and button code
+    - Uses pwm-fan hwmon interface exclusively
+
+ -- W11cE  Thu, 31 Jul 2025 14:25:00 +0300
