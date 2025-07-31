@@ -1,7 +1,5 @@
-rockpi-penta (1.0.0-1) unstable; urgency=medium
+rockpi-penta (1.0.1-1) unstable; urgency=medium
 
   * Initial release: Rock 5 C hwmon-only fan controller
-    - Removed OLED and button code
-    - Uses pwm-fan hwmon interface exclusively
 
- -- W11cE  Thu, 31 Jul 2025 14:25:00 +0300
+ -- RYZEN7 <mika@RYZEN7.localdomain>  Thu, 31 Jul 2025 22:13:50 +0300
