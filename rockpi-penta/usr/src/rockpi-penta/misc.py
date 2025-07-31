@@ -103,13 +103,3 @@ def fan_temp2dc(t: float) -> float:
             dc = _last_dc
     _last_dc = dc
     return dc
-
-# ────────── optional helper to toggle fan control on/off ────
-_RUN = True
-def fan_switch():
-    """Toggle fan algorithm on/off; write duty=0.999 when off."""
-    global _RUN
-    _RUN = not _RUN
-    state = "enabled" if _RUN else "disabled"
-    logging.info("fan algorithm %s via fan_switch()", state)
-    return _RUN

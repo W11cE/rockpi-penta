@@ -1,8 +1,8 @@
 Source: rockpi-penta
 Section: misc
 Priority: optional
-Maintainer: Your Name <you@example.com>
-Standards-Version: 4.6.2
+Maintainer: W11cE
+Standards-Version: 1.0.0
 Build-Depends: debhelper-compat (= 13), dh-python, python3-all, python3-venv
 Rules-Requires-Root: no
 
@@ -12,7 +12,6 @@ Depends:
  python3 (>= 3.9),
  python3-venv,
  smartmontools,
- gpiod,
  ${misc:Depends},
  ${python3:Depends}
 Recommends: lm-sensors
