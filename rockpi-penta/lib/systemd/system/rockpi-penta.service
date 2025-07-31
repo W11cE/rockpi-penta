@@ -1,13 +1,12 @@
 [Unit]
-Description=Rockpi SATA Hat
+Description=Rock 5 C Penta HAT Fan Controller (hwmon)
+After=multi-user.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3 /usr/bin/rockpi-penta/main.py
-KillSignal=SIGINT
-EnvironmentFile=/etc/rockpi-penta.env
+User=root
+ExecStart=/opt/rockpi-penta-venv/bin/python /usr/src/rockpi-penta/main.py
 Restart=on-failure
-WorkingDirectory=/usr/bin/rockpi-penta
 
 [Install]
 WantedBy=multi-user.target

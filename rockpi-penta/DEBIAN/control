@@ -1,9 +1,21 @@
-Package: rockpi-penta
-Version: 0.2
-Architecture: all
-Maintainer: Radxa <dev@radxa.com>
-Depends: python3, python3-libgpiod, python3-pillow, python3-pip
-Section: utils
+Source: rockpi-penta
+Section: misc
 Priority: optional
-Homepage: https://github.com/radxa/rockpi-penta
-Description: Rockpi Penta Hat
+Maintainer: Your Name <you@example.com>
+Standards-Version: 4.6.2
+Build-Depends: debhelper-compat (= 13), dh-python, python3-all, python3-venv
+Rules-Requires-Root: no
+
+Package: rockpi-penta
+Architecture: all
+Depends:
+ python3 (>= 3.9),
+ python3-venv,
+ smartmontools,
+ gpiod,
+ ${misc:Depends},
+ ${python3:Depends}
+Recommends: lm-sensors
+Description: Rock 5 C Penta SATA HAT fan controller (hwmon only)
+ Simple daemon that reads CPU / drive temperatures and writes fan PWM
+ via the kernel pwm-fan hwmon interface (/sys/class/hwmon/.../pwm1).

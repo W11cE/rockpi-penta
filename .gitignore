@@ -123,3 +123,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+/opt/rockpi-penta-venv/
+*.patch
