@@ -1,0 +1,4 @@
+cd ~/rockpi-penta
+dch --create --package rockpi-penta --newversion 1.0.0-1 \
+    --distribution unstable \
+    "Initial release: Rock 5 C hwmon-only fan controller"
