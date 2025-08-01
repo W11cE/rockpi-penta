@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-DTB_SRC="rk3588-pwm14-fan.dtbo"   # path inside .deb
+DTB_SRC="/usr/src/rockpi-penta/rk3588-pwm14-fan.dtbo"
 DTB_DST="/boot/dtb/rockchip/overlay/rk3588-pwm14-fan.dtbo"
 ARM_ENV="/boot/armbianEnv.txt"
 
