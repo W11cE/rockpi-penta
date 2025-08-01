@@ -15,7 +15,7 @@ sudo python3 -m venv /opt/rockpi-penta-venv
 sudo /opt/rockpi-penta-venv/bin/pip install -U pip
 
 echo "[3/3] systemd…"
-sudo install -Dm644 "$DEST/systemd/rockpi-penta.service" /etc/systemd/system/rockpi-penta.service
+sudo install -Dm644 "$DEST/lib/systemd/system/rockpi-penta.service" /etc/systemd/system/rockpi-penta.service
 sudo systemctl daemon-reload
 sudo systemctl enable --now rockpi-penta.service
 

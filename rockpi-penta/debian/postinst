@@ -32,7 +32,8 @@ fi
 sync
 
 # 5. set up the Python virtual environment
-if [ ! -d /opt/rockpi-penta-venv ]; then
+if [ ! -x /opt/rockpi-penta-venv/bin/python ]; then
+    rm -rf /opt/rockpi-penta-venv
     python3 -m venv /opt/rockpi-penta-venv
 fi
 /opt/rockpi-penta-venv/bin/pip install -U pip
