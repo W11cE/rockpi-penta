@@ -4,3 +4,4 @@ main.py                             usr/src/rockpi-penta/
 install.sh                                                 usr/src/doc/rockpi-penta/examples/
 lib/systemd/system/rockpi-penta.service        lib/systemd/system/
 etc/rockpi-penta.conf               etc/
+rk3588-pwm14-fan.dtbo               usr/src/rockpi-penta/
