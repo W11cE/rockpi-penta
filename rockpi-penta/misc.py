@@ -40,7 +40,7 @@ _DEFAULTS = {
 # ────────── load / reload config  ───────────────────────────
 def read_conf() -> dict:
     """Parse /etc/rockpi-penta.conf, return nested dict with fallbacks."""
-    cfg = ConfigParser()
+    cfg = ConfigParser(inline_comment_prefixes=("#", ";"))
     cfg.read_dict(_DEFAULTS)                  # preload defaults
     try:
         cfg.read("/etc/rockpi-penta.conf")
