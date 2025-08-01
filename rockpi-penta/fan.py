@@ -19,19 +19,21 @@ logging.basicConfig(
 def find_hat_hwmon(node_name: str = "pwm-fan-hat", label: str = "pwmfan") -> Path:
     """Return ``Path('/sys/class/hwmon/hwmonX')`` for the HAT fan.
 
-    The pwm-fan driver always exposes ``name='pwmfan'`` in hwmon.  Earlier
-    versions of this script expected ``pwm-fan-hat`` which does not match the
-    driver output and caused a ``RuntimeError``.  To reliably pick the HAT fan
-    when multiple pwm-fan devices exist, ``device/of_node/name`` is inspected
-    and matched against ``node_name`` if available.
+    Older kernels sometimes lack the ``device/of_node`` symlink used to
+    identify the overlay device.  In that case, fall back to matching the
+    device directory name which typically contains ``node_name``.
     """
     hwmons = Path("/sys/class/hwmon")
+    node_token = node_name.replace("-", "_")
     for d in hwmons.glob("hwmon*"):
         try:
             if (d / "name").read_text().strip() != label:
                 continue
-            n = d / "device" / "of_node" / "name"
+            dev = (d / "device").resolve()
+            n = dev / "of_node" / "name"
             if n.exists() and n.read_text().strip() == node_name:
+                return d
+            if node_token in dev.name:
                 return d
         except FileNotFoundError:
             continue
