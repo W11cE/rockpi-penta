@@ -30,7 +30,8 @@ _DEFAULTS = {
         "lv3": "50",      # °C where fan is full
         "hysteresis": "2",
         "average_samples": "5",
-        "dc_min": "0.001" # 0.001 ≈ off
+        "dc_min": "0.001", # 0.001 ≈ off
+        "hwmon_path": ""    # override auto-detection
     },
     "temperature": {
         "source": "cpu"   # cpu | drives | both
@@ -52,6 +53,7 @@ def read_conf() -> dict:
     for key in ("lv0", "lv1", "lv2", "lv3",
                 "hysteresis", "average_samples", "dc_min"):
         conf["fan"][key] = cfg.getfloat("fan", key)
+    conf["fan"]["hwmon_path"] = cfg.get("fan", "hwmon_path", fallback="")
     # temperature section
     conf["temperature"]["source"] = cfg.get(
         "temperature", "source", fallback="cpu").lower()
