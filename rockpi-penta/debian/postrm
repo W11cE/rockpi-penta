@@ -1,0 +1,28 @@
+#!/bin/sh
+set -e
+
+DTB="/boot/dtb/rockchip/overlay/rk3588-pwm14-fan.dtbo"
+ENV="/boot/armbianEnv.txt"
+
+case "$1" in
+    remove|purge)
+        # 1) delete the overlay file if we installed it
+        [ -f "$DTB" ] && rm -f "$DTB"
+
+        # 2) strip pwm14-fan and pwm14-m1 from overlays= line
+        if [ -f "$ENV" ] && grep -q "^overlays=" "$ENV"; then
+            # remove both tokens; collapse multiple spaces
+            sed -i 's/\s*pwm14-fan\s*//g; s/\s*pwm14-m1\s*//g; s/  */ /g' "$ENV"
+            # if overlays line became empty, remove the line entirely
+            sed -i '/^overlays=\s*$/d' "$ENV"
+        fi
+
+        # (optional) restore overlay_prefix only if we set it
+        if [ "$1" = purge ]; then
+            # Example: revert to rockchip if user purges
+            sed -i 's/^overlay_prefix=rk3588/overlay_prefix=rockchip/' "$ENV" || true
+        fi
+        ;;
+esac
+
+exit 0

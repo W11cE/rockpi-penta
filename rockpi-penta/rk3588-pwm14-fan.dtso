@@ -1,0 +1,23 @@
+/dts-v1/;
+/plugin/;
+
+/*
+ * Rock 5 C  –  Penta-HAT 12 V fan on PWM-14 CH0
+ * • Hardware: GPIO3_B4  (header pin 33)  – already wired on the HAT
+ * • Pin function: M0  (no need for M1/M2)
+ * • Inverted polarity (LOW = off, HIGH = full)
+ * • 25 kHz  (period 40 000 ns)
+ */
+
+
+
+/* fragment 1 ── create the fan device */
+&{/} {
+        pwm_fan_hat: pwm-fan-hat {
+                compatible      = "pwm-fan";
+                /* ctrl  ch  period(ns) polarity(1=inverted) */
+                pwms           = <&pwm14 0 40000 0>;
+                cooling-levels = <0 64 128 192 255>;
+                #cooling-cells = <2>;
+        };
+};

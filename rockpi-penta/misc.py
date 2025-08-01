@@ -30,7 +30,7 @@ _DEFAULTS = {
         "lv3": "50",      # °C where fan is full
         "hysteresis": "2",
         "average_samples": "5",
-        "dc_min": "0.999" # 0.999 ≈ off (invert later)
+        "dc_min": "0.001" # 0.001 ≈ off
     },
     "temperature": {
         "source": "cpu"   # cpu | drives | both
@@ -63,10 +63,10 @@ conf = read_conf()
 # ────────── fan helper: temperature→duty conversion ─────────
 # duty mapping table (invert because hwmon 0=full,255=off)
 _T2DC = OrderedDict([
-    ("lv3", 0.0),    # full speed
-    ("lv2", 0.25),
+    ("lv3", 1.00),    # full speed
+    ("lv2", 0.75),
     ("lv1", 0.5),
-    ("lv0", 0.75),
+    ("lv0", 0.25),
 ])
 _last_dc = None
 _temp_hist = []
@@ -85,7 +85,7 @@ def fan_temp2dc(t: float) -> float:
     t_min = conf["fan"]["lv0"]
     t_max = conf["fan"]["lv3"]
     dc_min = conf["fan"]["dc_min"]  # near-stop
-    dc_max = 0.0                    # full speed
+    dc_max = 1.0                    # full speed
 
     if t_avg <= t_min:
         dc = dc_min

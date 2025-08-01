@@ -1,9 +1,44 @@
 #!/bin/sh
 set -e
+
+DTB_SRC="rk3588-pwm14-fan.dtbo"   # path inside .deb
+DTB_DST="/boot/dtb/rockchip/overlay/rk3588-pwm14-fan.dtbo"
+ARM_ENV="/boot/armbianEnv.txt"
+
+# 1. install the overlay (create dir if missing)
+install -Dm644 "$DTB_SRC" "$DTB_DST"
+
+# 2. ensure overlay_prefix=rk3588  (replace or append)
+if grep -q "^overlay_prefix=" "$ARM_ENV"; then
+    sed -i 's/^overlay_prefix=.*/overlay_prefix=rk3588/' "$ARM_ENV"
+else
+    echo "overlay_prefix=rk3588" >>"$ARM_ENV"
+fi
+
+# 3. ensure overlays line contains exactly pwm14-fan pwm14-m1
+#    (order preserved, duplicates removed)
+if grep -q "^overlays=" "$ARM_ENV"; then
+    # strip any existing pwm14-fan / pwm14-m1 first, then append fresh list
+    current=$(grep "^overlays=" "$ARM_ENV" | cut -d= -f2-)
+    # remove duplicates of our two overlays
+    clean=$(echo "$current" | tr ' ' '\n' | grep -vE '^(pwm14-fan|pwm14-m1)$' | xargs)
+    sed -i "s/^overlays=.*/overlays=$clean pwm14-fan pwm14-m1/" "$ARM_ENV"
+else
+    echo "overlays=pwm14-fan pwm14-m1" >>"$ARM_ENV"
+fi
+
+# 4. mkinitcpio / update-initramfs is not needed for runtime overlays,
+#    but sync in case /boot is on SD
+sync
+
+
 case "$1" in
   configure|upgrade)
     systemctl daemon-reload
     systemctl enable --now rockpi-penta.service
     ;;
 esac
+
+
+
 exit 0

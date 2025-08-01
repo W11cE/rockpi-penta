@@ -16,29 +16,34 @@ logging.basicConfig(
 )
 
 # ────────── locate /sys/class/hwmon/.../pwm1 ─────────────────────
-def find_hwmon_pwm() -> Path:
-    for p in Path("/sys/class/hwmon").glob("hwmon*/pwm1"):
+def find_hat_hwmon(label: str = "pwm-fan-hat") -> Path:
+    """
+    Return Path('/sys/class/hwmon/hwmonX') for the HAT fan.
+    Raises RuntimeError if not found.
+    """
+    for d in Path("/sys/class/hwmon").glob("hwmon*"):
         try:
-            with open(p, "r+"):
-                logging.debug("using hwmon pwm node %s", p)
-                return p
-        except PermissionError:
-            logging.warning("%s not writable – skipping", p)
-    raise FileNotFoundError("no writable pwm1 found under /sys/class/hwmon")
+            if (d / "name").read_text().strip() == label:
+                return d
+        except FileNotFoundError:
+            continue
+    raise RuntimeError(f"hwmon entry with name '{label}' not found")
 
 class HwmonFan:
-    """write(duty) expects 0.0…1.0, converts to 0…255 (inverted)."""
-    def __init__(self):
-        self.pwm_file = find_hwmon_pwm()
-        ena = self.pwm_file.with_name("pwm1_enable")
-        if ena.exists():
-            ena.write_text("1")           # 1 = manual mode
-        logging.info("hwmon pwm ready: %s", self.pwm_file)
+    """
+    Wrapper around the pwm-fan device created by the overlay.
+    255 = full speed (inverted gate), 0 = off.
+    """
+    def __init__(self, label="pwm-fan-hat"):
+        hat = find_hat_hwmon(label)
+        self.pwm  = hat / "pwm1"
+        self.en   = hat / "pwm1_enable"
+        self.en.write_text("1")            # manual mode
 
+    # duty is 0.0 … 1.0 (1 = full, 0 = off)
     def write(self, duty: float):
-        # Rock 5C polarity: 0 → full, 255 → stop → invert
-        value = max(0, min(255, int((1.0 - duty) * 255)))
-        self.pwm_file.write_text(str(value))
+        value = max(0, min(255, int(duty * 255)))
+        self.pwm.write_text(str(value))
 
 # ────────── temperature helpers ──────────────────────────────────
 _CACHE = {"drives": [], "time": 0}
