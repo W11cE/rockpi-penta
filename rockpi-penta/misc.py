@@ -61,7 +61,7 @@ def read_conf() -> dict:
 conf = read_conf()
 
 # ────────── fan helper: temperature→duty conversion ─────────
-# duty mapping table (invert because hwmon 0=full,255=off)
+# duty mapping table (0 = off, 1 = full)
 _T2DC = OrderedDict([
     ("lv3", 1.00),    # full speed
     ("lv2", 0.75),
@@ -72,7 +72,7 @@ _last_dc = None
 _temp_hist = []
 
 def fan_temp2dc(t: float) -> float:
-    """Map temperature to duty cycle (0=full, 1=stop) using linear ramp."""
+    """Map temperature to duty cycle (0=off, 1=full) using linear ramp."""
     global _last_dc, _temp_hist
 
     # moving average
@@ -93,12 +93,12 @@ def fan_temp2dc(t: float) -> float:
         dc = dc_max
     else:
         span = t_max - t_min
-        dc = dc_min - (t_avg - t_min) / span * (dc_min - dc_max)
+        dc = dc_min + (t_avg - t_min) / span * (dc_max - dc_min)
 
     # hysteresis band
     hyster = conf["fan"]["hysteresis"]
     if _last_dc is not None:
-        thresh = (hyster / (t_max - t_min)) * (dc_min - dc_max)
+        thresh = (hyster / (t_max - t_min)) * (dc_max - dc_min)
         if abs(dc - _last_dc) < thresh:
             dc = _last_dc
     _last_dc = dc
