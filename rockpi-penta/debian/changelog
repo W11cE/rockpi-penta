@@ -1,3 +1,9 @@
+rockpi-penta (1.0.3-2) unstable; urgency=medium
+
+  * Include pyproject.toml so postinst can pip install
+
+ -- RYZEN7 <mika@RYZEN7.localdomain>  Fri, 01 Aug 2025 20:37:09 +0000
+
 rockpi-penta (1.0.3-1) unstable; urgency=medium
 
   * Initial release: Rock 5 C hwmon-only fan controller
