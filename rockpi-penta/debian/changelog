@@ -1,4 +1,4 @@
-rockpi-penta (1.0.2-1) unstable; urgency=medium
+rockpi-penta (1.0.3-1) unstable; urgency=medium
 
   * Initial release: Rock 5 C hwmon-only fan controller
 
