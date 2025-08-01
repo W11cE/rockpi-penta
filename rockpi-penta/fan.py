@@ -46,15 +46,18 @@ def find_hat_hwmon(node_name: str = "pwm-fan-hat", label: str = "pwmfan") -> Pat
     raise RuntimeError(f"hwmon entry with name '{label}' not found")
 
 class HwmonFan:
-    """
-    Wrapper around the pwm-fan device created by the overlay.
-    255 = full speed (inverted gate), 0 = off.
-    """
-    def __init__(self, node_name="pwm-fan-hat"):
-        hat = find_hat_hwmon(node_name)
-        self.pwm  = hat / "pwm1"
-        self.en   = hat / "pwm1_enable"
-        self.en.write_text("1")            # manual mode
+    """Wrapper around the pwm-fan device created by the overlay."""
+
+    def __init__(self, node_name: str = "pwm-fan-hat"):
+        path = conf["fan"].get("hwmon_path")
+        if path:
+            hat = Path(path)
+        else:
+            hat = find_hat_hwmon(node_name)
+        self.pwm = hat / "pwm1"
+        self.en = hat / "pwm1_enable"
+        if self.en.exists():
+            self.en.write_text("1")  # manual mode
 
     # duty is 0.0 … 1.0 (1 = full, 0 = off)
     def write(self, duty: float):
@@ -105,6 +108,7 @@ def effective_temp() -> float:
 # ────────── main loop ────────────────────────────────────────────
 fan = HwmonFan()
 logging.info("temperature source = %s", conf["temperature"]["source"])
+logging.info("hwmon path = %s", fan.pwm.parent)
 
 _prev = None
 while True:
