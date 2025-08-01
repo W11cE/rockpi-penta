@@ -113,5 +113,5 @@ while True:
     if dc != _prev:
         fan.write(dc)
         _prev = dc
-        logging.info("temp=%.1f °C  fan=%.0f %%", temp, (1-dc)*100)
+        logging.info("temp=%.1f °C  fan=%.0f %%", temp, dc*100)
     time.sleep(1)
