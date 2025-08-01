@@ -16,12 +16,28 @@ logging.basicConfig(
 )
 
 # ────────── locate /sys/class/hwmon/.../pwm1 ─────────────────────
-def find_hat_hwmon(label: str = "pwm-fan-hat") -> Path:
+def find_hat_hwmon(node_name: str = "pwm-fan-hat", label: str = "pwmfan") -> Path:
+    """Return ``Path('/sys/class/hwmon/hwmonX')`` for the HAT fan.
+
+    The pwm-fan driver always exposes ``name='pwmfan'`` in hwmon.  Earlier
+    versions of this script expected ``pwm-fan-hat`` which does not match the
+    driver output and caused a ``RuntimeError``.  To reliably pick the HAT fan
+    when multiple pwm-fan devices exist, ``device/of_node/name`` is inspected
+    and matched against ``node_name`` if available.
     """
-    Return Path('/sys/class/hwmon/hwmonX') for the HAT fan.
-    Raises RuntimeError if not found.
-    """
-    for d in Path("/sys/class/hwmon").glob("hwmon*"):
+    hwmons = Path("/sys/class/hwmon")
+    for d in hwmons.glob("hwmon*"):
+        try:
+            if (d / "name").read_text().strip() != label:
+                continue
+            n = d / "device" / "of_node" / "name"
+            if n.exists() and n.read_text().strip() == node_name:
+                return d
+        except FileNotFoundError:
+            continue
+
+    # fallback: first pwmfan device
+    for d in hwmons.glob("hwmon*"):
         try:
             if (d / "name").read_text().strip() == label:
                 return d
@@ -34,8 +50,8 @@ class HwmonFan:
     Wrapper around the pwm-fan device created by the overlay.
     255 = full speed (inverted gate), 0 = off.
     """
-    def __init__(self, label="pwm-fan-hat"):
-        hat = find_hat_hwmon(label)
+    def __init__(self, node_name="pwm-fan-hat"):
+        hat = find_hat_hwmon(node_name)
         self.pwm  = hat / "pwm1"
         self.en   = hat / "pwm1_enable"
         self.en.write_text("1")            # manual mode
