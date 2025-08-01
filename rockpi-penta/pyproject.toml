@@ -7,3 +7,6 @@ name = "rockpi-penta"
 version = "1.0.3"
 description = "Rock 5 C hwmon fan controller"
 dependencies = []
+
+[tool.setuptools]
+py-modules = ["main", "fan", "misc"]
