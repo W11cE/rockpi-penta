@@ -21,12 +21,10 @@ def find_hat_hwmon(label: str = "pwm-fan-hat") -> Path:
     Return Path('/sys/class/hwmon/hwmonX') for the HAT fan.
     Raises RuntimeError if not found.
     """
-    for d in Path("/sys/class/hwmon").glob("hwmon*"):
-        try:
-            if (d / "name").read_text().strip() == label:
-                return d
-        except FileNotFoundError:
-            continue
+    for d in Path("/sys/class/hwmon").glob("hwmon*"):        
+        target = d.resolve()         
+        if label in str(target):
+            return d
     raise RuntimeError(f"hwmon entry with name '{label}' not found")
 
 class HwmonFan:
