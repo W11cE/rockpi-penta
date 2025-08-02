@@ -22,20 +22,20 @@ def check_call(cmd: str) -> int:
     return subprocess.check_call(cmd, shell=True)
 
 # ────────── default config values ───────────────────────────
+_FAN_DEFAULT = {
+    "lv0": "35",      # °C where fan starts
+    "lv1": "40",
+    "lv2": "45",
+    "lv3": "50",      # °C where fan is full
+    "hysteresis": "2",
+    "average_samples": "5",
+    "dc_min": "0.001", # 0.001 ≈ off
+    "hwmon_path": ""    # override auto-detection
+}
+
 _DEFAULTS = {
-    "fan": {
-        "lv0": "35",      # °C where fan starts
-        "lv1": "40",
-        "lv2": "45",
-        "lv3": "50",      # °C where fan is full
-        "hysteresis": "2",
-        "average_samples": "5",
-        "dc_min": "0.001", # 0.001 ≈ off
-        "hwmon_path": ""    # override auto-detection
-    },
-    "temperature": {
-        "source": "cpu"   # cpu | drives | both
-    }
+    "hat_fan": _FAN_DEFAULT.copy(),
+    "cpu_fan": _FAN_DEFAULT.copy(),
 }
 
 # ────────── load / reload config  ───────────────────────────
@@ -49,14 +49,11 @@ def read_conf() -> dict:
         logging.warning("config read error: %s – using defaults", e)
 
     conf = defaultdict(dict)
-    # fan section
-    for key in ("lv0", "lv1", "lv2", "lv3",
-                "hysteresis", "average_samples", "dc_min"):
-        conf["fan"][key] = cfg.getfloat("fan", key)
-    conf["fan"]["hwmon_path"] = cfg.get("fan", "hwmon_path", fallback="")
-    # temperature section
-    conf["temperature"]["source"] = cfg.get(
-        "temperature", "source", fallback="cpu").lower()
+    for sect in ("hat_fan", "cpu_fan"):
+        for key in ("lv0", "lv1", "lv2", "lv3",
+                    "hysteresis", "average_samples", "dc_min"):
+            conf[sect][key] = cfg.getfloat(sect, key)
+        conf[sect]["hwmon_path"] = cfg.get(sect, "hwmon_path", fallback="")
     return conf
 
 # load once at import
@@ -70,24 +67,35 @@ _T2DC = OrderedDict([
     ("lv1", 0.5),
     ("lv0", 0.25),
 ])
-_last_dc = None
-_temp_hist = []
+_STATE_DEFAULT = {"last_dc": None, "temp_hist": []}
 
-def fan_temp2dc(t: float) -> float:
-    """Map temperature to duty cycle (0=off, 1=full) using linear ramp."""
-    global _last_dc, _temp_hist
+
+def fan_temp2dc(t: float, cfg: dict | None = None,
+                state: dict | None = None) -> float:
+    """Map temperature to duty cycle (0=off, 1=full) using linear ramp.
+
+    ``cfg`` is the per-fan configuration dictionary. ``state`` maintains
+    per-fan history and hysteresis. When omitted a module-level default
+    state is used, preserving the previous behaviour of a single global
+    fan.
+    """
+    if cfg is None:
+        cfg = conf.get("hat_fan", {})
+    if state is None:
+        state = _STATE_DEFAULT
 
     # moving average
-    _temp_hist.append(t)
-    N = int(conf["fan"]["average_samples"])
-    if len(_temp_hist) > N:
-        _temp_hist.pop(0)
-    t_avg = sum(_temp_hist) / len(_temp_hist)
+    hist = state.setdefault("temp_hist", [])
+    hist.append(t)
+    N = int(cfg["average_samples"])
+    if len(hist) > N:
+        hist.pop(0)
+    t_avg = sum(hist) / len(hist)
 
-    t_min = conf["fan"]["lv0"]
-    t_max = conf["fan"]["lv3"]
-    dc_min = conf["fan"]["dc_min"]  # near-stop
-    dc_max = 1.0                    # full speed
+    t_min = cfg["lv0"]
+    t_max = cfg["lv3"]
+    dc_min = cfg["dc_min"]  # near-stop
+    dc_max = 1.0              # full speed
 
     if t_avg <= t_min:
         dc = dc_min
@@ -98,10 +106,11 @@ def fan_temp2dc(t: float) -> float:
         dc = dc_min + (t_avg - t_min) / span * (dc_max - dc_min)
 
     # hysteresis band
-    hyster = conf["fan"]["hysteresis"]
-    if _last_dc is not None:
+    hyster = cfg["hysteresis"]
+    last_dc = state.get("last_dc")
+    if last_dc is not None:
         thresh = (hyster / (t_max - t_min)) * (dc_max - dc_min)
-        if abs(dc - _last_dc) < thresh:
-            dc = _last_dc
-    _last_dc = dc
+        if abs(dc - last_dc) < thresh:
+            dc = last_dc
+    state["last_dc"] = dc
     return dc
