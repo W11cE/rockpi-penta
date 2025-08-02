@@ -3,28 +3,33 @@ set -e
 
 DTB_SRC="/usr/src/rockpi-penta/rk3588-pwm14-fan.dtbo"
 DTB_DST="/boot/dtb/rockchip/overlay/rk3588-pwm14-fan.dtbo"
+
+DTB2_SRC="/usr/src/rockpi-penta/rk3588-pwm-fan.dtbo"
+DTB2_DST="/boot/dtb/rockchip/overlay/rk3588-pwm-fan.dtbo"
+
 ARM_ENV="/boot/armbianEnv.txt"
 
 # 1. install the overlay (create dir if missing)
 install -Dm644 "$DTB_SRC" "$DTB_DST"
+install -Dm644 "$DTB2_SRC" "$DTB2_DST"
 
 # 2. ensure overlay_prefix=rk3588  (replace or append)
-if grep -q "^overlay_prefix=" "$ARM_ENV"; then
-    sed -i 's/^overlay_prefix=.*/overlay_prefix=rk3588/' "$ARM_ENV"
-else
-    echo "overlay_prefix=rk3588" >>"$ARM_ENV"
-fi
+# if grep -q "^overlay_prefix=" "$ARM_ENV"; then
+#     sed -i 's/^overlay_prefix=.*/overlay_prefix=rk3588/' "$ARM_ENV"
+# else
+#     echo "overlay_prefix=rk3588" >>"$ARM_ENV"
+# fi
 
-# 3. ensure overlays line contains exactly pwm14-fan pwm14-m1
+# 3. ensure overlays line contains exactly pwm-fan pwm14-fan pwm14-m1
 #    (order preserved, duplicates removed)
 if grep -q "^overlays=" "$ARM_ENV"; then
-    # strip any existing pwm14-fan / pwm14-m1 first, then append fresh list
+    # strip any existing pwm-fan / pwm14-fan / pwm14-m1 first, then append fresh list
     current=$(grep "^overlays=" "$ARM_ENV" | cut -d= -f2-)
     # remove duplicates of our two overlays
-    clean=$(echo "$current" | tr ' ' '\n' | grep -vE '^(pwm14-fan|pwm14-m1)$' | xargs)
-    sed -i "s/^overlays=.*/overlays=$clean pwm14-fan pwm14-m1/" "$ARM_ENV"
+    clean=$(echo "$current" | tr ' ' '\n' | grep -vE '^(pwm-fan|pwm14-fan|pwm14-m1)$' | xargs)
+    sed -i "s/^overlays=.*/overlays=$clean pwm-fan pwm14-fan pwm14-m1/" "$ARM_ENV"
 else
-    echo "overlays=pwm14-fan pwm14-m1" >>"$ARM_ENV"
+    echo "overlays=pwm-fan pwm14-fan pwm14-m1" >>"$ARM_ENV"
 fi
 
 # 4. mkinitcpio / update-initramfs is not needed for runtime overlays,
