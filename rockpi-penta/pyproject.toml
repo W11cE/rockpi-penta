@@ -4,6 +4,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rockpi-penta"
-version = "1.0.3"
+version = "1.0.4"
 description = "Rock 5 C hwmon fan controller"
 dependencies = []
+
+[tool.setuptools]
+py-modules = ["main", "fan", "misc"]

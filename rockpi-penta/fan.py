@@ -16,10 +16,12 @@ logging.basicConfig(
 )
 
 # ────────── locate /sys/class/hwmon/.../pwm1 ─────────────────────
-def find_hat_hwmon(label: str = "pwm-fan-hat") -> Path:
-    """
-    Return Path('/sys/class/hwmon/hwmonX') for the HAT fan.
-    Raises RuntimeError if not found.
+def find_hat_hwmon(node_name: str = "pwm-fan-hat", label: str = "pwmfan") -> Path:
+    """Return ``Path('/sys/class/hwmon/hwmonX')`` for the HAT fan.
+
+    Older kernels sometimes lack the ``device/of_node`` symlink used to
+    identify the overlay device.  In that case, fall back to matching the
+    device directory name which typically contains ``node_name``.
     """
     for d in Path("/sys/class/hwmon").glob("hwmon*"):        
         target = d.resolve()         
@@ -28,15 +30,18 @@ def find_hat_hwmon(label: str = "pwm-fan-hat") -> Path:
     raise RuntimeError(f"hwmon entry with name '{label}' not found")
 
 class HwmonFan:
-    """
-    Wrapper around the pwm-fan device created by the overlay.
-    255 = full speed (inverted gate), 0 = off.
-    """
-    def __init__(self, label="pwm-fan-hat"):
-        hat = find_hat_hwmon(label)
-        self.pwm  = hat / "pwm1"
-        self.en   = hat / "pwm1_enable"
-        self.en.write_text("1")            # manual mode
+    """Wrapper around the pwm-fan device created by the overlay."""
+
+    def __init__(self, node_name: str = "pwm-fan-hat"):
+        path = conf["fan"].get("hwmon_path")
+        if path:
+            hat = Path(path)
+        else:
+            hat = find_hat_hwmon(node_name)
+        self.pwm = hat / "pwm1"
+        self.en = hat / "pwm1_enable"
+        if self.en.exists():
+            self.en.write_text("1")  # manual mode
 
     # duty is 0.0 … 1.0 (1 = full, 0 = off)
     def write(self, duty: float):
@@ -87,6 +92,7 @@ def effective_temp() -> float:
 # ────────── main loop ────────────────────────────────────────────
 fan = HwmonFan()
 logging.info("temperature source = %s", conf["temperature"]["source"])
+logging.info("hwmon path = %s", fan.pwm.parent)
 
 _prev = None
 while True:
@@ -95,5 +101,5 @@ while True:
     if dc != _prev:
         fan.write(dc)
         _prev = dc
-        logging.info("temp=%.1f °C  fan=%.0f %%", temp, (1-dc)*100)
+        logging.info("temp=%.1f °C  fan=%.0f %%", temp, dc*100)
     time.sleep(1)

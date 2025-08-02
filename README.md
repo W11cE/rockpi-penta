@@ -23,3 +23,11 @@ After installation, monitor the daemon with:
 ```bash
 sudo journalctl -u rockpi-penta -f
 ```
+
+If the fan device is not detected automatically, specify the full hwmon
+path in `/etc/rockpi-penta.conf`:
+
+```ini
+[fan]
+hwmon_path = /sys/class/hwmon/hwmon7
+```
