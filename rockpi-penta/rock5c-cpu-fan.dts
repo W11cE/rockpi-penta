@@ -1,57 +1,42 @@
 /dts-v1/;
 /plugin/;
 
-/ {
-    /* Enable PWM3 controller and set pin multiplexing for fan output */
-    fragment@0 {
-        target = <&pwm3>;
-        __overlay__ {
-            pinctrl-names = "default";
-            pinctrl-0 = <&pwm3m1_pins>;
-            status = "okay";
-        };
-    };
+/*
+ * Rock 5 C  –  CPU fan on PWM3-CH0 (header fan connector)
+ * Polarity 0  (HIGH = on).  Period 40 000 ns  (25 kHz)
+ */
 
-    /* Extend SoC thermal zone with active cooling trips and maps for the fan */
-    fragment@1 {
-        target = <&soc_thermal>;  // Thermal zone node (may be "soc_thermal" in Armbian DT)
-        __overlay__ {
-            trips {
-                fan_trip0: fan_trip0 {
-                    temperature = <55000>;    // 55°C trip point (start fan)
-                    hysteresis = <2000>;      // 2°C hysteresis
-                    type = "active";
-                };
-                fan_trip1: fan_trip1 {
-                    temperature = <65000>;    // 65°C trip point (higher fan speed)
-                    hysteresis = <2000>;
-                    type = "active";
-                };
-            };
-            cooling-maps {
-                fan_map0: fan_map0 {
-                    trip = <&fan_trip0>;
-                    cooling-device = <&fan0 THERMAL_NO_LIMIT 1>;  // allow fan state 0->1 at 55°C
-                };
-                fan_map1: fan_map1 {
-                    trip = <&fan_trip1>;
-                    cooling-device = <&fan0 2 THERMAL_NO_LIMIT>;  // allow fan state 2+ at 65°C
-                };
-            };
-        };
-    };
+/* ---------- enable PWM3 controller & pinmux ---------- */
+&pwm3 {
+        status = "okay";
+        pinctrl-names = "default";
+        pinctrl-0     = <&pwm3m1_pins>;   /* GPIO1_D0 = fan header */
+};
 
-    /* Define the PWM fan device using PWM3 (channel 0) */
-    fragment@2 {
-        target-path = "/";
-        __overlay__ {
-            fan0: cpu_fan {
-                compatible       = "pwm-fan";
-                #cooling-cells   = <2>;
-                cooling-levels   = <0 64 128 192 255>;  // fan speed PWM values for states 0-4
-                // fan-supply    = <&vcc_5v0>;         /* optional: 5V supply regulator if defined */
-                pwms             = <&pwm3 0 40000 0>;   // PWM3, channel 0, 25 kHz, normal polarity
-            };
+/* ---------- pwm-fan device (cooling-device) ---------- */
+&{/} {
+        fan0: cpu_fan {
+                compatible     = "pwm-fan";
+                /*  ctrl  ch  period(ns)  polarity */
+                pwms           = <&pwm3 0 40000 0>;
+                cooling-levels = <0 64 128 192 255>;
+                #cooling-cells = <2>;
         };
-    };
+
+        /* optional: single trip just to prove it builds */
+        &soc_thermal {
+                trips {
+                        fan_trip0: fan_trip0 {
+                                temperature = <55000>; /* 55 °C */
+                                hysteresis   = <2000>;
+                                type         = "active";
+                        };
+                };
+                cooling-maps {
+                        fan_map0 {
+                                trip            = <&fan_trip0>;
+                                cooling-device  = <&fan0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+                        };
+                };
+        };
 };
