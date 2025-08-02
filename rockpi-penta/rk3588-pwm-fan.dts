@@ -13,7 +13,7 @@
                  */
                 target-path = "/";
                 __overlay__ {
-                        fan: pwm-fan {
+                        pwm-cpu-fan: pwm-cpu-fan {
                                 compatible      = "pwm-fan";
 
                                 /* -- PWM8 channel 0, 25 kHz, active-high -- */

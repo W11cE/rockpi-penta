@@ -11,6 +11,13 @@ armbian-add-overlay "$DTB_SRC"
 armbian-add-overlay "$DTB2_SRC"
 # [ -f "$BUILTIN" ] && armbian-add-overlay "$BUILTIN"
 
+# 2. ensure overlay_prefix=rk3588  (replace or append)
+if grep -q "^overlay_prefix=" "$ARM_ENV"; then
+    sed -i 's/^overlay_prefix=.*/overlay_prefix=rk3588/' "$ARM_ENV"
+else
+    echo "overlay_prefix=rk3588" >>"$ARM_ENV"
+fi
+
 # 2. ensure user_overlays line contains pwm-fan pwm14-fan pwm14-m1
 # if grep -q "^user_overlays=" "$ARM_ENV"; then
 #     current=$(grep "^user_overlays=" "$ARM_ENV" | cut -d= -f2-)
