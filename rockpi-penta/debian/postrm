@@ -7,14 +7,23 @@ case "$1" in
     remove|purge)
         # 1) delete installed overlay files
         for dir in /boot/overlay-user /boot/dtb/rockchip/overlay-user /boot/dtb/rockchip/overlay; do
-            [ -f "$dir/rk3588-pwm14-fan.dtbo" ] && rm -f "$dir/rk3588-pwm14-fan.dtbo"
-            [ -f "$dir/rk3588-pwm14-m1.dtbo" ] && rm -f "$dir/rk3588-pwm14-m1.dtbo"
+            rm -f "$dir/rk3588-pwm3-fan.dtbo" \
+                  "$dir/rk3588-pwm14-fan.dtbo" \
+                  "$dir/rk3588-pwm14-m1.dtbo"
         done
 
-        # 2) strip overlays from user_overlays line
-        if [ -f "$ENV" ] && grep -q "^user_overlays=" "$ENV"; then
-            sed -i 's/\s*pwm-fan\s*//g; s/\s*pwm14-fan\s*//g; s/\s*pwm14-m1\s*//g; s/  */ /g' "$ENV"
-            sed -i '/^user_overlays=\s*$/d' "$ENV"
+        # 2) strip overlays from armbianEnv.txt
+        if [ -f "$ENV" ]; then
+            # remove user overlays
+            if grep -q "^user_overlays=" "$ENV"; then
+                sed -i 's/\<rk3588-pwm3-fan\>//g; s/\<rk3588-pwm14-fan\>//g; s/  */ /g' "$ENV"
+                sed -i '/^user_overlays=\s*$/d' "$ENV"
+            fi
+            # remove overlays entries
+            if grep -q "^overlays=" "$ENV"; then
+                sed -i 's/\<pwm14-m1\>//g; s/  */ /g' "$ENV"
+                sed -i '/^overlays=\s*$/d' "$ENV"
+            fi
         fi
         ;;
 esac
