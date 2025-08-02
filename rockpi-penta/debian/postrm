@@ -1,29 +1,22 @@
 #!/bin/sh
 set -e
 
-DTB="/boot/dtb/rockchip/overlay/rk3588-pwm14-fan.dtbo"
-DTB2="/boot/dtb/rockchip/overlay/rk3588-pwm-fan.dtbo"
 ENV="/boot/armbianEnv.txt"
 
 case "$1" in
     remove|purge)
-        # 1) delete the overlay file if we installed it
-        [ -f "$DTB" ] && rm -f "$DTB"
-        [ -f "$DTB2" ] && rm -f "$DTB2"
+        # 1) delete installed overlay files
+        for dir in /boot/overlay-user /boot/dtb/rockchip/overlay-user /boot/dtb/rockchip/overlay; do
+            [ -f "$dir/rk3588-pwm14-fan.dtbo" ] && rm -f "$dir/rk3588-pwm14-fan.dtbo"
+            [ -f "$dir/rk3588-pwm-fan.dtbo" ] && rm -f "$dir/rk3588-pwm-fan.dtbo"
+            [ -f "$dir/rk3588-pwm14-m1.dtbo" ] && rm -f "$dir/rk3588-pwm14-m1.dtbo"
+        done
 
-        # 2) strip pwm14-fan and pwm14-m1 from overlays= line
-        if [ -f "$ENV" ] && grep -q "^overlays=" "$ENV"; then
-            # remove both tokens; collapse multiple spaces
+        # 2) strip overlays from user_overlays line
+        if [ -f "$ENV" ] && grep -q "^user_overlays=" "$ENV"; then
             sed -i 's/\s*pwm-fan\s*//g; s/\s*pwm14-fan\s*//g; s/\s*pwm14-m1\s*//g; s/  */ /g' "$ENV"
-            # if overlays line became empty, remove the line entirely
-            sed -i '/^overlays=\s*$/d' "$ENV"
+            sed -i '/^user_overlays=\s*$/d' "$ENV"
         fi
-
-        # (optional) restore overlay_prefix only if we set it
-        # if [ "$1" = purge ]; then
-        #     # Example: revert to rockchip if user purges
-        #     sed -i 's/^overlay_prefix=rk3588/overlay_prefix=rockchip/' "$ENV" || true
-        # fi
         ;;
 esac
 
