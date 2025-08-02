@@ -1,65 +1,14 @@
 /dts-v1/;
 /plugin/;
 
-/*
- * ROCK 5 C – CPU fan on PWM3-CH0 (2-pin header)
- *  • PWM3 M1 = GPIO1_D0
- *  • 25 kHz, normal polarity
- *  • Fan starts at 55 °C, ramps higher at 65 °C
- *  • Coexists with SATA-HAT fan on PWM14
- */
 
-/* ───────── fragment 0 : enable PWM3 controller & pinmux ───────── */
+/* fragment 1 ── create the fan device */
 &{/} {
-    fragment@0 {
-        target = <&pwm3>;
-        __overlay__ {
-            status = "okay";
-            pinctrl-names = "default";
-            pinctrl-0     = <&pwm3m1_pins>;   /* GPIO1_D0 out as PWM */
-        };
-    };
-
-    /* ───── fragment 1 : create pwm-fan cooling-device ───── */
-    fragment@1 {
-        target-path = "/";
-        __overlay__ {
-            fan0: cpu_fan {
+        pwm_fan_cpu: pwm-fan-cpu {
                 compatible      = "pwm-fan";
-                pwms            = <&pwm3 0 40000 0>;   /* 25 kHz */
-                cooling-levels  = <0 64 128 192 255>;  /* 0-25-50-75-100 % */
-                #cooling-cells  = <2>;
-            };
+                /* ctrl  ch  period(ns) polarity(1=inverted) */
+                pwms           = <&pwm3 0 40000 0>;
+                cooling-levels = <0 64 128 192 255>;
+                #cooling-cells = <2>;
         };
-    };
-
-    /* ───── fragment 2 : add trips & cooling-maps to SoC thermal ───── */
-    fragment@2 {
-        target = <&soc_thermal>;
-        __overlay__ {
-            trips {
-                fan_trip0: fan_trip0 {
-                    temperature = <55000>;   /* 55 °C */
-                    hysteresis  = <2000>;    /* 2 °C */
-                    type        = "active";
-                };
-                fan_trip1: fan_trip1 {
-                    temperature = <65000>;   /* 65 °C */
-                    hysteresis  = <2000>;
-                    type        = "active";
-                };
-            };
-            cooling-maps {
-                map0 {
-                    trip            = <&fan_trip0>;
-                    cooling-device  = <&fan0 0 1>;          /* allow state 0→1 */
-                };
-                map1 {
-                    trip            = <&fan_trip1>;
-                    /* 0xffffffff = THERMAL_NO_LIMIT */
-                    cooling-device  = <&fan0 2 0xffffffff>; /* state 2+ above 65 °C */
-                };
-            };
-        };
-    };
 };
