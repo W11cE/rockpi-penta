@@ -19,10 +19,10 @@ fi
 
 if grep -q "^overlays=" "$ARM_ENV"; then
     current=$(grep "^overlays=" "$ARM_ENV" | cut -d= -f2-)
-    clean=$(echo "$current" | tr ' ' '\n' | grep -vE '^(pwm14-m1)$' | xargs)
-    sed -i "s/^overlays=.*/overlays=$clean pwm14-m1/" "$ARM_ENV"
+    clean=$(echo "$current" | tr ' ' '\n' | grep -vE '^(pwm14-m1|pwm3-m1)$' | xargs)
+    sed -i "s/^overlays=.*/overlays=$clean pwm14-m1 pwm3-m1/" "$ARM_ENV"
 else
-    echo "overlays=pwm14-m1" >>"$ARM_ENV"
+    echo "overlays=pwm14-m1 pwm3-m1" >>"$ARM_ENV"
 fi
 
 # 3. sync in case /boot is on SD
