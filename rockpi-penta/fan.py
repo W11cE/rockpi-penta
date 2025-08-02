@@ -101,8 +101,14 @@ while True:
 
     # Drive fan control
     drv = drive_temps()
-    t_drv = max(drv) if drv else 0
-    dc_hat = misc.fan_temp2dc(t_drv, conf["hat_fan"], _state_hat)
+    if not drv:  # no drives detected – immediately drop to minimum speed
+        t_drv = 0
+        dc_hat = conf["hat_fan"]["dc_min"]
+        _state_hat.clear()
+        _state_hat["last_dc"] = dc_hat
+    else:
+        t_drv = max(drv)
+        dc_hat = misc.fan_temp2dc(t_drv, conf["hat_fan"], _state_hat)
     if dc_hat != _prev_hat:
         hat_fan.write(dc_hat)
         _prev_hat = dc_hat
