@@ -5,7 +5,6 @@ install.sh                                                 usr/src/doc/rockpi-pe
 lib/systemd/system/rockpi-penta.service        lib/systemd/system/
 etc/rockpi-penta.conf               etc/
 rk3588-pwm14-fan.dtbo               usr/src/rockpi-penta/
-rk3588-pwm-fan.dtbo                 usr/src/rockpi-penta/
 rk3588-pwm14-fan.dts               usr/src/rockpi-penta/
-rk3588-pwm-fan.dts                 usr/src/rockpi-penta/
+rock5c-cpu-fan.dts               usr/src/rockpi-penta/
 pyproject.toml                      usr/src/rockpi-penta/

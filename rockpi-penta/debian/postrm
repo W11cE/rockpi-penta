@@ -8,7 +8,6 @@ case "$1" in
         # 1) delete installed overlay files
         for dir in /boot/overlay-user /boot/dtb/rockchip/overlay-user /boot/dtb/rockchip/overlay; do
             [ -f "$dir/rk3588-pwm14-fan.dtbo" ] && rm -f "$dir/rk3588-pwm14-fan.dtbo"
-            [ -f "$dir/rk3588-pwm-fan.dtbo" ] && rm -f "$dir/rk3588-pwm-fan.dtbo"
             [ -f "$dir/rk3588-pwm14-m1.dtbo" ] && rm -f "$dir/rk3588-pwm14-m1.dtbo"
         done
 
