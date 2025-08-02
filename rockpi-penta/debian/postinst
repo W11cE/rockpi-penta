@@ -14,10 +14,19 @@ armbian-add-overlay "$DTB2_SRC"
 # 2. ensure user_overlays line contains pwm-fan pwm14-fan pwm14-m1
 if grep -q "^user_overlays=" "$ARM_ENV"; then
     current=$(grep "^user_overlays=" "$ARM_ENV" | cut -d= -f2-)
-    clean=$(echo "$current" | tr ' ' '\n' | grep -vE '^(pwm-fan|pwm14-fan|pwm14-m1)$' | xargs)
-    sed -i "s/^user_overlays=.*/user_overlays=$clean pwm-fan pwm14-fan pwm14-m1/" "$ARM_ENV"
+    clean=$(echo "$current" | tr ' ' '\n' | grep -vE '^(rk3588-pwm-fan|rk3588-pwm14-fan)$' | xargs)
+    sed -i "s/^user_overlays=.*/user_overlays=$clean rk3588-pwm-fan rk3588-pwm14-fan /" "$ARM_ENV"
 else
-    echo "user_overlays=pwm-fan pwm14-fan pwm14-m1" >>"$ARM_ENV"
+    echo "user_overlays=rk3588-pwm-fan rk3588-pwm14-fan" >>"$ARM_ENV"
+fi
+
+
+if grep -q "^overlays=" "$ARM_ENV"; then
+    current=$(grep "^overlays=" "$ARM_ENV" | cut -d= -f2-)
+    clean=$(echo "$current" | tr ' ' '\n' | grep -vE '^(pwm14-m1)$' | xargs)
+    sed -i "s/^overlays=.*/overlays=$clean pwm14-m1/" "$ARM_ENV"
+else
+    echo "overlays=pwm14-m1" >>"$ARM_ENV"
 fi
 
 # 3. sync in case /boot is on SD
