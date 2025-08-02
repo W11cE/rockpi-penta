@@ -2,14 +2,12 @@
 set -e
 
 DTB_SRC="/usr/src/rockpi-penta/rk3588-pwm14-fan.dts"
-DTB2_SRC="/usr/src/rockpi-penta/rock5c-cpu-fan.dts"
-BUILTIN="/boot/dtb/rockchip/overlay/rk3588-pwm14-m1.dtbo"
+DTB2_SRC="/usr/src/rockpi-penta/rk3588-pwm14-fan.dts"
 ARM_ENV="/boot/armbianEnv.txt"
 
 # 1. install overlays using armbian-add-overlay
 armbian-add-overlay "$DTB_SRC"
 armbian-add-overlay "$DTB2_SRC"
-# [ -f "$BUILTIN" ] && armbian-add-overlay "$BUILTIN"
 
 # 2. ensure overlay_prefix=rk3588  (replace or append)
 if grep -q "^overlay_prefix=" "$ARM_ENV"; then
@@ -17,15 +15,6 @@ if grep -q "^overlay_prefix=" "$ARM_ENV"; then
 else
     echo "overlay_prefix=rk3588" >>"$ARM_ENV"
 fi
-
-# 2. ensure user_overlays line contains pwm-fan pwm14-fan pwm14-m1
-# if grep -q "^user_overlays=" "$ARM_ENV"; then
-#     current=$(grep "^user_overlays=" "$ARM_ENV" | cut -d= -f2-)
-#     clean=$(echo "$current" | tr ' ' '\n' | grep -vE '^(rk3588-pwm-fan|rk3588-pwm14-fan)$' | xargs)
-#     sed -i "s/^user_overlays=.*/user_overlays=$clean rk3588-pwm-fan rk3588-pwm14-fan /" "$ARM_ENV"
-# else
-#     echo "user_overlays=rk3588-pwm-fan rk3588-pwm14-fan" >>"$ARM_ENV"
-# fi
 
 
 if grep -q "^overlays=" "$ARM_ENV"; then
