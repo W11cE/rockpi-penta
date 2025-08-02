@@ -16,7 +16,7 @@ logging.basicConfig(
 )
 
 # ────────── locate /sys/class/hwmon/.../pwm1 ─────────────────────
-def find_hat_hwmon(node_name: str = "pwm-fan-hat", label: str = "pwmfan") -> Path:
+def find_hat_hwmon(label: str = "pwm-fan-hat") -> Path:
     """Return ``Path('/sys/class/hwmon/hwmonX')`` for the HAT fan.
 
     Older kernels sometimes lack the ``device/of_node`` symlink used to
