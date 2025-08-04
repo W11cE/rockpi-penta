@@ -8,8 +8,7 @@ case "$1" in
         # 1) delete installed overlay files
         for dir in /boot/overlay-user /boot/dtb/rockchip/overlay-user /boot/dtb/rockchip/overlay; do
             rm -f "$dir/rk3588-pwm3-fan.dtbo" \
-                  "$dir/rk3588-pwm14-fan.dtbo" \
-                  "$dir/rk3588-pwm14-m1.dtbo"
+                  "$dir/rk3588-pwm14-fan.dtbo"
         done
 
         # 2) strip overlays from armbianEnv.txt
@@ -21,7 +20,7 @@ case "$1" in
             fi
             # remove overlays entries
             if grep -q "^overlays=" "$ENV"; then
-                sed -i 's/\<pwm14-m1\>//g; s/  */ /g' "$ENV"
+                sed -i 's/\<rk3588-pwm3-m1\>//g; s/\<rk3588-pwm14-m1\>//g; s/  */ /g' "$ENV"
                 sed -i '/^overlays=\s*$/d' "$ENV"
             fi
         fi

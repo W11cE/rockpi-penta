@@ -4,7 +4,7 @@ Rock 5 C – Penta SATA HAT fan controller (kernel pwm-fan only).
 No OLED, no button, no GPIO fallback.
 """
 
-import time, subprocess, logging, sys, re
+import time, subprocess, logging, sys, re, glob
 from pathlib import Path
 import misc                    # re-use existing misc.read_conf, fan_temp2dc
 
@@ -58,30 +58,36 @@ def cpu_temp() -> float:
     logging.debug("cpu=%.1f °C", t)
     return t
 
-def drive_temps() -> list[float]:
-    if time.time() - _CACHE["time"] < 60:
-        return _CACHE["drives"]
-    temps = []
-    boot = subprocess.check_output("findmnt -n -o SOURCE / | sed 's/[0-9]*$//'",
-                                   shell=True).decode().strip()
-    drives = subprocess.check_output(
-        "lsblk -nd -o NAME,TYPE | awk '$2==\"disk\" {print \"/dev/\"$1}'",
-        shell=True).decode().split()
-    for d in [x for x in drives if x != boot]:
+def drive_temps_hwmon() -> list[int]:
+    """
+    Return a list of °C temperatures read via the kernel’s drivetemp hwmon
+    interface.  Works on kernels ≥ 5.6 once the drivetemp module is loaded.
+    Falls back to an empty list if no drivetemp devices exist.
+    """
+    temps_c = []
+
+    # Every hwmon device has a “name” file.  The drivetemp driver uses names
+    # like “drivetemp0”, “drivetemp1”, …  Each of them exposes temp1_input.
+    for name_file in glob.glob("/sys/class/hwmon/*/name"):
         try:
-            out = subprocess.check_output(["smartctl", "-A", d]).decode()
-            m = re.search(r"Temperature.*?(\d+)", out)
-            if m:
-                temps.append(int(m.group(1)))
-                logging.debug("%s=%s °C", d, m.group(1))
-        except Exception as e:
-            logging.warning("smartctl %s: %s", d, e)
-    _CACHE.update(time=time.time(), drives=temps)
-    return temps
+            if not Path(name_file).read_text().strip().startswith("drivetemp"):
+                continue
+
+            base = Path(name_file).parent
+            # There can be temp1_input, temp2_input … for multi-LUN enclosures.
+            for tfile in base.glob("temp*_input"):
+                milli_c = int(tfile.read_text().strip())
+                temps_c.append(milli_c // 1000)      # convert to plain °C
+        except (FileNotFoundError, PermissionError, ValueError):
+            # Ignore devices that disappear or return garbage while we iterate
+            continue
+
+    return temps_c
 
 # ────────── main loop ────────────────────────────────────────────
 hat_fan = HwmonFan("pwm-fan-hat", conf["hat_fan"].get("hwmon_path"))
 cpu_fan = HwmonFan("pwm-fan-cpu", conf["cpu_fan"].get("hwmon_path"))
+# cpu_fan = HwmonFan("pwm-fan-cpu", conf["cpu_fan"].get("hwmon_path"))
 logging.info("hat fan hwmon path = %s", hat_fan.pwm.parent)
 logging.info("cpu fan hwmon path = %s", cpu_fan.pwm.parent)
 
@@ -100,7 +106,7 @@ while True:
         logging.info("cpu temp=%.1f °C  cpu fan=%.0f %%", t_cpu, dc_cpu * 100)
 
     # Drive fan control
-    drv = drive_temps()
+    drv = drive_temps_hwmon()
     if not drv:  # no drives detected – immediately drop to minimum speed
         t_drv = 0
         dc_hat = conf["hat_fan"]["dc_min"]

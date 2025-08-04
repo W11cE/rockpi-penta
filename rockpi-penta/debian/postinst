@@ -2,7 +2,7 @@
 set -e
 
 DTB_SRC="/usr/src/rockpi-penta/rk3588-pwm14-fan.dts"
-DTB2_SRC="/usr/src/rockpi-penta/rk3588-pwm14-fan.dts"
+DTB2_SRC="/usr/src/rockpi-penta/rk3588-pwm3-fan.dts"
 ARM_ENV="/boot/armbianEnv.txt"
 
 # 1. install overlays using armbian-add-overlay
