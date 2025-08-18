@@ -35,6 +35,7 @@ fi
 /opt/rockpi-penta-venv/bin/pip install -U pip
 /opt/rockpi-penta-venv/bin/pip install /usr/src/rockpi-penta
 
+echo drivetemp > /etc/modules-load.d/rockpi-penta.conf
 
 case "$1" in
   configure|upgrade)
